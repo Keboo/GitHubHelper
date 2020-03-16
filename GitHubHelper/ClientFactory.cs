@@ -14,7 +14,7 @@ namespace GitHubHelper
             MessageHandler = messageHandler ?? HttpMessageHandlerFactory.CreateDefault;
         }
 
-        public IGitHubClient GetClient(string accessToken, string appName = "AutoReviewer")
+        public IGitHubClient GetClient(string accessToken, string appName = "GitHubHelper")
         {
             if (accessToken is null)
             {
