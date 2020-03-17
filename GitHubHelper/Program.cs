@@ -21,7 +21,7 @@ namespace GitHubHelper
                 .ConfigureFromMethod<IConsole, string, string?, string?, string?>(MilestoneContributors);
             Command createdFiles = new Command("created")
             {
-                new Command("projects").ConfigureFromMethod<IConsole, DateTimeOffset, string?, string?, string?>(CreatedFiles)
+                new Command("projects").ConfigureFromMethod<IConsole, DateTimeOffset, string?, string?, string?>(CreatedProjects)
             };
 
             return await new CommandLineBuilder()
@@ -34,7 +34,7 @@ namespace GitHubHelper
                 .InvokeAsync(args);
         }
 
-        public static async Task<int> CreatedFiles(
+        public static async Task<int> CreatedProjects(
             IConsole console,
             DateTimeOffset since,
             string? accessToken = null,
@@ -49,7 +49,8 @@ namespace GitHubHelper
             IGitHubClient github = GitHub.GetClient(accessToken);
 
             IReadOnlyList<GitHubCommit> commits = Array.Empty<GitHubCommit>();
-            for(int i = 1; i <= 1 || commits.Any(); i++)
+            var seenProjectFiles = new HashSet<string>();
+            for (int i = 1; i <= 1 || commits.Any(); i++)
             {
                 commits = await github.Repository.Commit.GetAll(repoOwner, repoName, new CommitRequest
                 {
@@ -62,7 +63,6 @@ namespace GitHubHelper
                     StartPage = i
                 });
 
-
                 foreach (string sha in commits.Select(x => x.Sha))
                 {
                     //TODO: For some reason files are not returned with the list
@@ -71,7 +71,8 @@ namespace GitHubHelper
                     foreach (GitHubCommitFile file in commit.Files ?? Enumerable.Empty<GitHubCommitFile>())
                     {
                         if (string.Equals(Path.GetExtension(file.Filename), ".csproj", StringComparison.OrdinalIgnoreCase) 
-                            && string.Equals(file.Status, "added", StringComparison.OrdinalIgnoreCase))
+                            && string.Equals(file.Status, "added", StringComparison.OrdinalIgnoreCase) 
+                            && seenProjectFiles.Add(file.Filename))
                         {
                             console.Out.WriteLine($"{commit.Commit.Author.Date:d} => {file.Filename}");
                         }
