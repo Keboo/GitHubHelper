@@ -1,5 +1,6 @@
 ﻿using Octokit;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
@@ -8,6 +9,8 @@ using System.CommandLine.Parsing;
 using System.CommandLine.Rendering;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Loader;
 using System.Threading.Tasks;
 
 namespace GitHubHelper
@@ -17,17 +20,22 @@ namespace GitHubHelper
     {
         public static async Task<int> Main(string[] args)
         {
-            Command contributors = new Command("contibutors")
+            Command contributors = new Command("contributors")
                 .ConfigureFromMethod<IConsole, string, string?, string?, string?>(MilestoneContributors);
             Command createdFiles = new Command("created")
             {
                 new Command("projects").ConfigureFromMethod<IConsole, DateTimeOffset, string?, string?, string?>(CreatedProjects)
+            };
+            Command diff = new Command("diff")
+            {
+                new Command("icons").ConfigureFromMethod<IConsole, string, string>(DiffIcons)
             };
 
             return await new CommandLineBuilder()
                 //.ConfigureHelpFromXmlComments(method, xmlDocsFilePath)
                 .AddCommand(contributors)
                 .AddCommand(createdFiles)
+                .AddCommand(diff)
                 .UseDefaults()
                 .UseAnsiTerminalWhenAvailable()
                 .Build()
@@ -55,7 +63,7 @@ namespace GitHubHelper
                 commits = await github.Repository.Commit.GetAll(repoOwner, repoName, new CommitRequest
                 {
                     Since = since
-                }, 
+                },
                 new ApiOptions
                 {
                     PageSize = 30,
@@ -70,8 +78,8 @@ namespace GitHubHelper
 
                     foreach (GitHubCommitFile file in commit.Files ?? Enumerable.Empty<GitHubCommitFile>())
                     {
-                        if (string.Equals(Path.GetExtension(file.Filename), ".csproj", StringComparison.OrdinalIgnoreCase) 
-                            && string.Equals(file.Status, "added", StringComparison.OrdinalIgnoreCase) 
+                        if (string.Equals(Path.GetExtension(file.Filename), ".csproj", StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(file.Status, "added", StringComparison.OrdinalIgnoreCase)
                             && seenProjectFiles.Add(file.Filename))
                         {
                             console.Out.WriteLine($"{commit.Commit.Author.Date:d} => {file.Filename}");
@@ -80,7 +88,7 @@ namespace GitHubHelper
                 }
             }
 
-            
+
 
             return 0;
         }
@@ -147,6 +155,139 @@ namespace GitHubHelper
             }
 
             return 0;
+        }
+
+        public static async Task<int> DiffIcons(
+            IConsole console,
+            string previousVersion,
+            string currentVersion)
+        {
+            if (string.IsNullOrWhiteSpace(previousVersion))
+            {
+                console.Out.WriteLine("Previous version is required");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(currentVersion))
+            {
+                console.Out.WriteLine("Current version is required");
+                return 1;
+            }
+
+            IProcessManager processManager = new ProcessManager(console);
+
+            string command = $"install MaterialDesignThemes -Prerelease -Version ";
+
+            FileInfo nuget = new FileInfo("NuGet.exe");
+            if (!await processManager.RunNugetCommand(nuget, command + previousVersion, nuget.Directory))
+            {
+                console.Out.WriteLine($"$Failed to download MaterialDesignThemes {previousVersion}");
+                return 1;
+            }
+            if (!await processManager.RunNugetCommand(nuget, command + currentVersion, nuget.Directory))
+            {
+                console.Out.WriteLine($"$Failed to download MaterialDesignThemes {currentVersion}");
+                return 1;
+            }
+
+            var previousValues = ProcessDll(Path.GetFullPath($"MaterialDesignThemes.{previousVersion}"));
+            if (previousValues is null) return 1;
+            var newValues = ProcessDll(Path.GetFullPath($"MaterialDesignThemes.{currentVersion}"));
+            if (newValues is null) return 1;
+
+            var previousValuesByName = new Dictionary<string, int>();
+            foreach (var kvp in previousValues)
+            {
+                foreach (var aliases in kvp.Value.aliases)
+                {
+                    previousValuesByName[aliases] = kvp.Key;
+                }
+            }
+            var newValuesByName = new Dictionary<string, int>();
+            foreach (var kvp in newValues)
+            {
+                foreach (var aliases in kvp.Value.aliases)
+                {
+                    newValuesByName[aliases] = kvp.Key;
+                }
+            }
+
+            var newItems = newValuesByName.Keys.Except(previousValuesByName.Keys)
+                .OrderBy(x => x)
+                .ToList();
+
+            var removedItems = previousValuesByName.Keys.Except(newValuesByName.Keys)
+                .OrderBy(x => x)
+                .ToList();
+
+            var visuallyChanged = newValuesByName.Keys.Intersect(previousValuesByName.Keys)
+                .Where(key => newValues[newValuesByName[key]].path != previousValues[previousValuesByName[key]].path)
+                .OrderBy(x => x)
+                .ToList();
+
+            console.Out.WriteLine("## Pack Icon Changes");
+            console.Out.WriteLine($"### New icons ({newItems.Count})");
+            foreach (var iconGroup in newItems.GroupBy(name => newValuesByName[name]))
+            {
+                console.Out.WriteLine($"- {string.Join(", ", iconGroup)}");
+            }
+
+            console.Out.WriteLine($"### Icons with visual changes ({visuallyChanged.Count})");
+            foreach (var iconGroup in visuallyChanged.GroupBy(name => newValuesByName[name]))
+            {
+                console.Out.WriteLine($"- {string.Join(", ", iconGroup)}");
+            }
+
+            console.Out.WriteLine($"### Removed icons ({removedItems.Count})");
+            foreach (var iconGroup in removedItems.GroupBy(name => previousValuesByName[name]))
+            {
+                console.Out.WriteLine($"- {string.Join(", ", iconGroup)}");
+            }
+
+            return 0;
+        }
+
+        private static IReadOnlyDictionary<int, (HashSet<string> aliases, string? path)>? ProcessDll(string directory)
+        {
+            FileInfo dll = Directory.EnumerateFiles(directory, "MaterialDesignThemes.Wpf.dll", SearchOption.AllDirectories)
+                .Select(file => new FileInfo(file))
+                .FirstOrDefault(file => file.Directory?.Name.StartsWith("netcore", StringComparison.OrdinalIgnoreCase) ?? false);
+
+            if (dll is null) return null;
+
+            AssemblyLoadContext context = new AssemblyLoadContext(Guid.NewGuid().ToString(), true);
+
+            Assembly assembly = context.LoadFromStream(dll.OpenRead());
+
+            Type? packIconKind = assembly.GetType("MaterialDesignThemes.Wpf.PackIconKind");
+            Type? packIconDataFactory = assembly.GetType("MaterialDesignThemes.Wpf.PackIconDataFactory");
+
+            if (packIconKind is null) return null;
+            if (packIconDataFactory is null) return null;
+
+            var rv = new Dictionary<int, (HashSet<string>, string?)>();
+
+            MethodInfo? createMethod = packIconDataFactory.GetMethod("Create", BindingFlags.InvokeMethod | BindingFlags.NonPublic | BindingFlags.Static);
+
+            IDictionary pathDictionary = (IDictionary)createMethod?.Invoke(null, new object?[0]);
+
+            if (pathDictionary is null) return null;
+
+            foreach (string enumName in Enum.GetNames(packIconKind))
+            {
+                object @enum = Enum.Parse(packIconKind, enumName);
+                if (rv.TryGetValue((int)@enum, out var found))
+                {
+                    found.Item1.Add(enumName);
+                    continue;
+                }
+
+                string? path = (string?)pathDictionary[@enum];
+                rv[(int)@enum] = (new HashSet<string> { enumName }, path);
+            }
+
+            context.Unload();
+
+            return rv;
         }
 
         private static bool TryGetRepoInfo(IConsole console, ref string? repoOwner, ref string? repoName)
