@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
+using System.CommandLine.Invocation;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
 using System.CommandLine.Rendering;
@@ -11,10 +12,24 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace GitHubHelper
 {
+    public static class Foo
+    {
+        public static CommandLineBuilder UseConfiguration(this CommandLineBuilder builder)
+        {
+            builder.UseMiddleware(ctx =>
+            {
+                
+            });
+            return builder;
+        }
+    }
+
+
 
     class Program
     {
@@ -22,7 +37,7 @@ namespace GitHubHelper
         {
             Command contributors = new Command("contributors")
                 .ConfigureFromMethod<IConsole, string, string?, string?, string?>(MilestoneContributors);
-            Command createdFiles = new Command("created")
+            Command created = new Command("created")
             {
                 new Command("projects").ConfigureFromMethod<IConsole, DateTimeOffset, string?, string?, string?>(CreatedProjects)
             };
@@ -31,6 +46,11 @@ namespace GitHubHelper
                 new Command("icons").ConfigureFromMethod<IConsole, string, string>(DiffIcons)
             };
 
+            //Command diff = new Command("diff")
+            //{
+            //    new Command("icons").ConfigureFromMethod()
+            //};
+
             return await new CommandLineBuilder()
                 //.ConfigureHelpFromXmlComments(method, xmlDocsFilePath)
                 .AddCommand(contributors)
@@ -38,6 +58,7 @@ namespace GitHubHelper
                 .AddCommand(diff)
                 .UseDefaults()
                 .UseAnsiTerminalWhenAvailable()
+                .UseConfiguration()
                 .Build()
                 .InvokeAsync(args);
         }

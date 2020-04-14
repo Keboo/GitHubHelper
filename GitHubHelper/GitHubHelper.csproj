@@ -5,9 +5,11 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <Nullable>enable</Nullable>
     <AutoGenerateEntryPoint>false</AutoGenerateEntryPoint>
+    <UserSecretsId>a38a1520-ad2d-4715-927a-bb416fdece60</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="3.0.0" />
     <PackageReference Include="Octokit" Version="0.44.0" />
     <PackageReference Include="System.CommandLine.DragonFruit" Version="0.3.0-alpha.20158.1" />
   </ItemGroup>
