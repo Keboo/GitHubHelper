@@ -43,6 +43,13 @@ namespace GitHubHelper
             return command;
         }
 
+        public static Command ConfigureFromMethod<T1, T2, T3, T4, T5, T6, T7>(this Command command,
+            Func<T1, T2, T3, T4, T5, T6, T7, Task<int>> action)
+        {
+            command.ConfigureFromMethod(action.Method, action.Target);
+            return command;
+        }
+
         private static IEnumerable<Option> BuildOptions(this MethodInfo type)
         {
             var descriptor = HandlerDescriptor.FromMethodInfo(type);
@@ -57,13 +64,68 @@ namespace GitHubHelper
             };
 
             foreach (var option in descriptor.ParameterDescriptors
-                .Where(d => !omittedTypes.Contains (d.Type))
+                .Where(d => !omittedTypes.Contains(d.ValueType))
                 .Where(d => !_argumentParameterNames.Contains(d.ValueName))
                 .Select(p => p.BuildOption()))
             {
 
                 yield return option;
             }
+        }
+
+        //TODO This moves into API somehow
+        private static readonly Func<ParameterDescriptor, ParameterInfo> _GetParameterInfo = BuildAccessor();
+        private static Func<ParameterDescriptor, ParameterInfo> BuildAccessor()
+        {
+            FieldInfo fieldInfo = typeof(ParameterDescriptor).GetField("_parameterInfo", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetField)
+                ?? throw new InvalidOperationException("Could not find _parameterInfo field");
+            return x =>
+            {
+                return fieldInfo.GetValue(x) as ParameterInfo ?? throw new InvalidOperationException("Field was not ParameterInfo");
+            };
+        }
+
+        private static Option BuildOption(this ParameterDescriptor parameter)
+        {
+            var argument = new Argument
+            {
+                ArgumentType = parameter.ValueType
+            };
+
+            ParameterInfo parameterInfo = _GetParameterInfo(parameter);
+
+            List<DefaultValueAttribute> attributes =
+                parameterInfo.GetCustomAttributes<DefaultValueAttribute>()
+                .ToList();
+
+            if (attributes.Any() || parameter.HasDefaultValue)
+            {
+                if (attributes.Any())
+                {
+
+                }
+                argument.SetDefaultValueFactory(() =>
+                {
+                    var a = argument;
+                    foreach (DefaultValueAttribute attribute in attributes)
+                    {
+                        if (attribute.TryProvideValue(out object? defaultValue))
+                        {
+                            return defaultValue;
+                        }
+                    }
+                    return parameter.GetDefaultValue();
+                });
+            }
+
+            var option = new Option(
+                parameter.BuildAlias(),
+                parameter.ValueName)
+            {
+                Argument = argument
+            };
+
+            return option;
         }
 
         private static void ConfigureFromMethod(
@@ -112,46 +174,33 @@ namespace GitHubHelper
 
             command.Handler = CommandHandler.Create(method, target);
         }
+    }
 
-        private class FooHandler : HandlerDescriptor
+    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = true)]
+    public abstract class DefaultValueAttribute : Attribute
+    {
+        //[return:NotNullIfTrue]
+        public abstract bool TryProvideValue(out object? value);
+    }
+
+    public sealed class FromEnvVariableAttribute : DefaultValueAttribute
+    {
+        public string EnvironmentVariableName { get; }
+
+        public FromEnvVariableAttribute(string environmentVariableName)
         {
-            public static HandlerDescriptor Create(MethodInfo methodInfo, object? target = null)
+            EnvironmentVariableName = environmentVariableName ?? throw new ArgumentNullException(nameof(environmentVariableName));
+        }
+
+        public override bool TryProvideValue(out object? value)
+        {
+            if (Environment.GetEnvironmentVariable(EnvironmentVariableName) is string environmentValue)
             {
-                return null!;
+                value = environmentValue;
+                return true;
             }
-
-            public override ICommandHandler GetCommandHandler()
-            {
-                var parameterBinders = ParameterDescriptors
-                    .Select(parameterDescriptor => new ModelBinder(parameterDescriptor))
-                    .ToList();
-
-                if (_invocationTarget == null)
-                {
-                    var invocationTargetBinder =
-                        _handlerMethodInfo.IsStatic
-                            ? null
-                            : new ModelBinder(_handlerMethodInfo.DeclaringType);
-
-                    return new ModelBindingCommandHandler(
-                        _handlerMethodInfo,
-                        parameterBinders,
-                        invocationTargetBinder);
-                }
-                else
-                {
-                    return new ModelBindingCommandHandler(
-                        _handlerMethodInfo,
-                        parameterBinders,
-                        _invocationTarget);
-                }
-            }
-
-            public override ModelDescriptor Parent => ModelDescriptor.FromType(_handlerMethodInfo.DeclaringType);
-
-            protected override IEnumerable<ParameterDescriptor> InitializeParameterDescriptors() =>
-                _handlerMethodInfo.GetParameters()
-                    .Select(p => new ParameterDescriptor(p, this));
+            value = default;
+            return false;
         }
     }
 }

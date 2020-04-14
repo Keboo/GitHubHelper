@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
-using System.CommandLine.Invocation;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
 using System.CommandLine.Rendering;
@@ -12,7 +11,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace GitHubHelper
@@ -29,8 +27,6 @@ namespace GitHubHelper
         }
     }
 
-
-
     class Program
     {
         public static async Task<int> Main(string[] args)
@@ -39,22 +35,17 @@ namespace GitHubHelper
                 .ConfigureFromMethod<IConsole, string, string?, string?, string?>(MilestoneContributors);
             Command created = new Command("created")
             {
-                new Command("projects").ConfigureFromMethod<IConsole, DateTimeOffset, string?, string?, string?>(CreatedProjects)
+                new Command("projects").ConfigureFromMethod<IConsole, DateTimeOffset, string?, string?, string?, int, int>(CreatedProjects)
             };
             Command diff = new Command("diff")
             {
                 new Command("icons").ConfigureFromMethod<IConsole, string, string>(DiffIcons)
             };
 
-            //Command diff = new Command("diff")
-            //{
-            //    new Command("icons").ConfigureFromMethod()
-            //};
-
             return await new CommandLineBuilder()
                 //.ConfigureHelpFromXmlComments(method, xmlDocsFilePath)
                 .AddCommand(contributors)
-                .AddCommand(createdFiles)
+                .AddCommand(created)
                 .AddCommand(diff)
                 .UseDefaults()
                 .UseAnsiTerminalWhenAvailable()
@@ -66,9 +57,14 @@ namespace GitHubHelper
         public static async Task<int> CreatedProjects(
             IConsole console,
             DateTimeOffset since,
+            [FromEnvVariable("GitHubAccessToken")]
             string? accessToken = null,
+            [FromEnvVariable("GitHubOwner")]
             string? repoOwner = null,
-            string? repoName = null)
+            [FromEnvVariable("GitHubRepo")]
+            string? repoName = null,
+            int foo = 1,
+            int bar = 2)
         {
             if (!TryGetRepoInfo(console, ref repoOwner, ref repoName))
             {
@@ -289,7 +285,7 @@ namespace GitHubHelper
 
             MethodInfo? createMethod = packIconDataFactory.GetMethod("Create", BindingFlags.InvokeMethod | BindingFlags.NonPublic | BindingFlags.Static);
 
-            IDictionary pathDictionary = (IDictionary)createMethod?.Invoke(null, new object?[0]);
+            IDictionary? pathDictionary = (IDictionary?)createMethod?.Invoke(null, new object?[0]);
 
             if (pathDictionary is null) return null;
 
