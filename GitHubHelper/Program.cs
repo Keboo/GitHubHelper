@@ -49,9 +49,7 @@ namespace GitHubHelper
             [FromEnvVariable("GitHubOwner")]
             string? repoOwner = null,
             [FromEnvVariable("GitHubRepo")]
-            string? repoName = null,
-            int foo = 1,
-            int bar = 2)
+            string? repoName = null)
         {
             if (!TryGetRepoInfo(console, ref repoOwner, ref repoName))
             {
