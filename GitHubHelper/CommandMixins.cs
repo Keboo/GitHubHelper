@@ -175,32 +175,4 @@ namespace GitHubHelper
             command.Handler = CommandHandler.Create(method, target);
         }
     }
-
-    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = true)]
-    public abstract class DefaultValueAttribute : Attribute
-    {
-        //[return:NotNullIfTrue]
-        public abstract bool TryProvideValue(out object? value);
-    }
-
-    public sealed class FromEnvVariableAttribute : DefaultValueAttribute
-    {
-        public string EnvironmentVariableName { get; }
-
-        public FromEnvVariableAttribute(string environmentVariableName)
-        {
-            EnvironmentVariableName = environmentVariableName ?? throw new ArgumentNullException(nameof(environmentVariableName));
-        }
-
-        public override bool TryProvideValue(out object? value)
-        {
-            if (Environment.GetEnvironmentVariable(EnvironmentVariableName) is string environmentValue)
-            {
-                value = environmentValue;
-                return true;
-            }
-            value = default;
-            return false;
-        }
-    }
 }

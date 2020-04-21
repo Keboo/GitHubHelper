@@ -15,18 +15,6 @@ using System.Threading.Tasks;
 
 namespace GitHubHelper
 {
-    public static class Foo
-    {
-        public static CommandLineBuilder UseConfiguration(this CommandLineBuilder builder)
-        {
-            builder.UseMiddleware(ctx =>
-            {
-                
-            });
-            return builder;
-        }
-    }
-
     class Program
     {
         public static async Task<int> Main(string[] args)
@@ -49,7 +37,6 @@ namespace GitHubHelper
                 .AddCommand(diff)
                 .UseDefaults()
                 .UseAnsiTerminalWhenAvailable()
-                .UseConfiguration()
                 .Build()
                 .InvokeAsync(args);
         }
