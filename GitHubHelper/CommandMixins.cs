@@ -100,15 +100,10 @@ namespace GitHubHelper
 
             if (attributes.Any() || parameter.HasDefaultValue)
             {
-                if (attributes.Any())
-                {
-
-                }
                 argument.SetDefaultValueFactory(() =>
                 {
-                    var a = argument;
                     foreach (DefaultValueAttribute attribute in attributes)
-                    {
+                    { 
                         if (attribute.TryProvideValue(out object? defaultValue))
                         {
                             return defaultValue;

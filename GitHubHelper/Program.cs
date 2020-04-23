@@ -23,22 +23,23 @@ namespace GitHubHelper
                 .ConfigureFromMethod<IConsole, string, string?, string?, string?>(MilestoneContributors);
             Command created = new Command("created")
             {
-                new Command("projects").ConfigureFromMethod<IConsole, DateTimeOffset, string?, string?, string?, int, int>(CreatedProjects)
+                new Command("projects").ConfigureFromMethod<IConsole, DateTimeOffset, string?, string?, string?>(CreatedProjects)
             };
             Command diff = new Command("diff")
             {
                 new Command("icons").ConfigureFromMethod<IConsole, string, string>(DiffIcons)
             };
 
-            return await new CommandLineBuilder()
+            var p = new CommandLineBuilder()
                 //.ConfigureHelpFromXmlComments(method, xmlDocsFilePath)
                 .AddCommand(contributors)
                 .AddCommand(created)
                 .AddCommand(diff)
                 .UseDefaults()
                 .UseAnsiTerminalWhenAvailable()
-                .Build()
-                .InvokeAsync(args);
+                .Build();
+
+            return await p.InvokeAsync(args);
         }
 
         public static async Task<int> CreatedProjects(
