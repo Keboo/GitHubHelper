@@ -21,7 +21,6 @@ namespace GitHubHelper
             "args"
         };
 
-
         public static Command ConfigureFromMethod<T1, T2, T3>(this Command command,
             Func<T1, T2, T3, Task<int>> action)
         {

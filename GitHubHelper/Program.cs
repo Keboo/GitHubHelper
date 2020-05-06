@@ -91,8 +91,6 @@ namespace GitHubHelper
                 }
             }
 
-
-
             return 0;
         }
 
