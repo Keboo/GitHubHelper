@@ -6,7 +6,6 @@ using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
-using System.CommandLine.Rendering;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -20,24 +19,56 @@ namespace GitHubHelper
     {
         public static async Task<int> Main(string[] args)
         {
-            Command contributors = new Command("contributors")
-                .ConfigureFromMethod<IConsole, string, string?, string?, string?>(MilestoneContributors);
-            Command createdFiles = new Command("created")
+            Option<string> milestone = new("--milestone");
+            Option<string?> accessToken = new("--access-token", getDefaultValue: () => Environment.GetEnvironmentVariable("GITHUB_PAT"));
+            Option<string?> repoOwner = new("--repo-owner", getDefaultValue: () => "MaterialDesignInXAML");
+            Option<string?> repoName = new("--repo-name", getDefaultValue: () => "MaterialDesignInXamlToolkit");
+
+            Command contributors = new("contributors")
             {
-                new Command("projects").ConfigureFromMethod<IConsole, DateTimeOffset, string?, string?, string?>(CreatedProjects)
+                milestone,
+                accessToken,
+                repoOwner,
+                repoName
             };
-            Command diff = new Command("diff")
+            contributors.SetHandler<Func<IConsole, string, string?, string?, string?, Task<int>>>(
+                MilestoneContributors, milestone, accessToken, repoOwner, repoName);
+
+            Option<DateTimeOffset> since = new("--since");
+            Command projects = new("projects")
             {
-                new Command("icons").ConfigureFromMethod<IConsole, string, string>(DiffIcons)
+                since,
+                accessToken,
+                repoOwner,
+                repoName
+            };
+            projects.SetHandler<Func<IConsole, DateTimeOffset, string?, string?, string?, Task<int>>>(
+                CreatedProjects, since, accessToken, repoOwner, repoName);
+            Command createdFiles = new("created")
+            {
+                projects
+            };
+
+            Option<string> previousVersion = new("--previous-version");
+            Option<string> currentVersion = new("--current-version");
+            Command icons = new("icons")
+            {
+                previousVersion,
+                currentVersion
+            };
+            icons.SetHandler<Func<IConsole, string, string, Task<int>>>(
+                DiffIcons, previousVersion, currentVersion);
+
+            Command diff = new("diff")
+            {
+                icons
             };
 
             return await new CommandLineBuilder()
-                //.ConfigureHelpFromXmlComments(method, xmlDocsFilePath)
                 .AddCommand(contributors)
                 .AddCommand(createdFiles)
                 .AddCommand(diff)
                 .UseDefaults()
-                .UseAnsiTerminalWhenAvailable()
                 .Build()
                 .InvokeAsync(args);
         }
@@ -109,7 +140,7 @@ namespace GitHubHelper
 
             IReadOnlyList<Milestone> milestones = await github.Issue.Milestone.GetAllForRepository(repoOwner, repoName);
 
-            Milestone githubMilestone = milestones.FirstOrDefault(x => x.Title == milestone);
+            Milestone? githubMilestone = milestones.FirstOrDefault(x => x.Title == milestone);
 
             if (githubMilestone is null)
             {
@@ -142,7 +173,7 @@ namespace GitHubHelper
                 users.Add(pr.User);
             }
 
-            var ignoredUsers = new[] { "Keboo", "MDIX-SA" };
+            var ignoredUsers = new[] { "Keboo", "MDIX-SA", "github-actions[bot]" };
 
             console.Out.WriteLine("A big thank you to everyone who contributed (either logging issues or submitting PRs):");
 
@@ -177,7 +208,12 @@ namespace GitHubHelper
 
             string command = $"install MaterialDesignThemes -DirectDownload -Prerelease -Version ";
 
-            FileInfo nuget = new FileInfo("NuGet.exe");
+            FileInfo nuget = new("NuGet.exe");
+            if (nuget.Directory is null)
+            {
+                console.Out.WriteLine($"Failed to find NuGet.exe");
+                return 1;
+            }
             if (!await processManager.RunNugetCommand(nuget, command + previousVersion, nuget.Directory))
             {
                 console.Out.WriteLine($"Failed to download MaterialDesignThemes {previousVersion}");
@@ -248,7 +284,7 @@ namespace GitHubHelper
 
         private static IReadOnlyDictionary<int, (HashSet<string> aliases, string? path)>? ProcessDll(string directory)
         {
-            FileInfo dll = Directory.EnumerateFiles(directory, "MaterialDesignThemes.Wpf.dll", SearchOption.AllDirectories)
+            FileInfo? dll = Directory.EnumerateFiles(directory, "MaterialDesignThemes.Wpf.dll", SearchOption.AllDirectories)
                 .Select(file => new FileInfo(file))
                 .FirstOrDefault(file => file.Directory?.Name.StartsWith("netcore", StringComparison.OrdinalIgnoreCase) ?? false);
 
@@ -268,7 +304,7 @@ namespace GitHubHelper
 
             MethodInfo? createMethod = packIconDataFactory.GetMethod("Create", BindingFlags.InvokeMethod | BindingFlags.NonPublic | BindingFlags.Static);
 
-            IDictionary pathDictionary = (IDictionary)createMethod?.Invoke(null, new object?[0]);
+            IDictionary? pathDictionary = (IDictionary?)createMethod?.Invoke(null, new object?[0]);
 
             if (pathDictionary is null) return null;
 

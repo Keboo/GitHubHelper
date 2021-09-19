@@ -167,12 +167,18 @@ namespace GitHubHelper
 
             void OutputHandler(object s, DataReceivedEventArgs e)
             {
-                progressOutput?.Invoke(e.Data);
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    progressOutput?.Invoke(e.Data);
+                }
             }
 
             void ErrorHandler(object s, DataReceivedEventArgs e)
             {
-                progressError?.Invoke(e.Data);
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    progressError?.Invoke(e.Data);
+                }
             }
         }
 
