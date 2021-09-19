@@ -175,17 +175,17 @@ namespace GitHubHelper
 
             IProcessManager processManager = new ProcessManager(console);
 
-            string command = $"install MaterialDesignThemes -Prerelease -Version ";
+            string command = $"install MaterialDesignThemes -DirectDownload -Prerelease -Version ";
 
             FileInfo nuget = new FileInfo("NuGet.exe");
             if (!await processManager.RunNugetCommand(nuget, command + previousVersion, nuget.Directory))
             {
-                console.Out.WriteLine($"$Failed to download MaterialDesignThemes {previousVersion}");
+                console.Out.WriteLine($"Failed to download MaterialDesignThemes {previousVersion}");
                 return 1;
             }
             if (!await processManager.RunNugetCommand(nuget, command + currentVersion, nuget.Directory))
             {
-                console.Out.WriteLine($"$Failed to download MaterialDesignThemes {currentVersion}");
+                console.Out.WriteLine($"Failed to download MaterialDesignThemes {currentVersion}");
                 return 1;
             }
 

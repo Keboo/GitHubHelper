@@ -20,7 +20,7 @@ namespace GitHubHelper
                 Arguments = command,
                 WorkingDirectory = nugetDirectory.FullName
             };
-            return await processManager.RunProcessAsync(startInfo, null, null, CancellationToken.None) == 0;
+            return await processManager.RunProcessAsync(startInfo, x => Console.WriteLine(x), null, CancellationToken.None) == 0;
         }
     }
 
