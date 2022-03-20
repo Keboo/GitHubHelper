@@ -3,33 +3,32 @@ using System.Net.Http;
 using Octokit;
 using Octokit.Internal;
 
-namespace GitHubHelper
+namespace GitHubHelper;
+
+public class ClientFactory : IClientFactory
 {
-    public class ClientFactory : IClientFactory
+    private Func<HttpMessageHandler> MessageHandler { get; }
+
+    public ClientFactory(Func<HttpMessageHandler>? messageHandler = null)
     {
-        private Func<HttpMessageHandler> MessageHandler { get; }
+        MessageHandler = messageHandler ?? HttpMessageHandlerFactory.CreateDefault;
+    }
 
-        public ClientFactory(Func<HttpMessageHandler>? messageHandler = null)
+    public IGitHubClient GetClient(string accessToken, string appName = "GitHubHelper")
+    {
+        if (accessToken is null)
         {
-            MessageHandler = messageHandler ?? HttpMessageHandlerFactory.CreateDefault;
+            throw new ArgumentNullException(nameof(accessToken));
         }
 
-        public IGitHubClient GetClient(string accessToken, string appName = "GitHubHelper")
+        if (appName is null)
         {
-            if (accessToken is null)
-            {
-                throw new ArgumentNullException(nameof(accessToken));
-            }
-
-            if (appName is null)
-            {
-                throw new ArgumentNullException(nameof(appName));
-            }
-            IHttpClient httpClient = new HttpClientAdapter(MessageHandler);
-            IJsonSerializer jsonSerializer = new SimpleJsonSerializer();
-            ICredentialStore credentialStore = new InMemoryCredentialStore(new Credentials(accessToken));
-            var connection = new Connection(new ProductHeaderValue(appName), GitHubClient.GitHubApiUrl, credentialStore, httpClient, jsonSerializer);
-            return new GitHubClient(connection);
+            throw new ArgumentNullException(nameof(appName));
         }
+        IHttpClient httpClient = new HttpClientAdapter(MessageHandler);
+        IJsonSerializer jsonSerializer = new SimpleJsonSerializer();
+        ICredentialStore credentialStore = new InMemoryCredentialStore(new Credentials(accessToken));
+        var connection = new Connection(new ProductHeaderValue(appName), GitHubClient.GitHubApiUrl, credentialStore, httpClient, jsonSerializer);
+        return new GitHubClient(connection);
     }
 }

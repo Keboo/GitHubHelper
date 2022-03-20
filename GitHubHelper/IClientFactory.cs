@@ -1,9 +1,8 @@
 ﻿using Octokit;
 
-namespace GitHubHelper
+namespace GitHubHelper;
+
+public interface IClientFactory
 {
-    public interface IClientFactory
-    {
-        IGitHubClient GetClient(string accessToken, string appName = "AutoReviewer");
-    }
+    IGitHubClient GetClient(string accessToken, string appName = "AutoReviewer");
 }
