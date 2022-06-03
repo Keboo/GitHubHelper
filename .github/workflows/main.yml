@@ -14,4 +14,4 @@ jobs:
           repository-owner: 'MaterialDesignInXAML'
           token: ${{ github.token }}
       - name: Get the output
-        run: echo "The contibutors are ${{ steps.get-contribs.outputs.contributors }}"
+        run: echo "${{ steps.get-contribs.outputs.contributors }}"
