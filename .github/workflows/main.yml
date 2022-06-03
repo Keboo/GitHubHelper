@@ -1,0 +1,16 @@
+on: [push]
+
+jobs:
+  show_contributors:
+    runs-on: ubuntu-latest
+    name: A job to get contributors
+    steps:
+      - name: GetContribs
+        id: get-contribs
+        uses: Keboo/GitHubHelper@9fb810c6d7e7147fc8259561766432d5ef1d89f2
+        with:
+          milestone: '4.6.0'
+          repository: 'MaterialDesignInXamlToolkit'
+          repository-owner: 'MaterialDesignInXAML'
+      - name: Get the output
+        run: echo "The contibutors are ${{ steps.get-contribs.outputs.contributors }}"
