@@ -1,0 +1,21 @@
+# action.yml
+name: 'Get Contributors'
+description: 'List all of the contributors to a milestone'
+inputs:
+  milestone:
+    description: 'The milestone to list all of the contributors for'
+    required: true
+  repository:
+    description: 'The repository name that contains the milestone'
+    required: true
+  repository-owner:
+    description: 'The owner of the repository that contains the milestone'
+    required: true
+outputs:
+  contributors:
+    description: 'The list of contributors'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - --milestone ${{ inputs.milestone }} --repo-name ${{ inputs.repository }} --repo-owner ${{ inputs.repository-owner }} --access-token ${{ github.token }}

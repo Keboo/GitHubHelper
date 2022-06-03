@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace GitHubHelper;
@@ -119,8 +120,6 @@ class Program
             }
         }
 
-
-
         return 0;
     }
 
@@ -131,6 +130,7 @@ class Program
         string? repoOwner = null,
         string? repoName = null)
     {
+        console.Out.WriteLine($"Getting contributors from {repoOwner}/{repoName} for milestone {milestone}");
         if (!TryGetRepoInfo(console, ref repoOwner, ref repoName))
         {
             return 1;
@@ -176,15 +176,18 @@ class Program
 
         var ignoredUsers = new[] { "Keboo", "MDIX-SA", "github-actions[bot]" };
 
-        console.Out.WriteLine("A big thank you to everyone who contributed (either with issues or pull requests):");
+        StringBuilder sb = new();
+        sb.AppendLine("A big thank you to everyone who contributed (either with issues or pull requests):");
 
         foreach (string user in users
             .Select(x => x.Login)
             .Except(ignoredUsers)
             .OrderBy(x => x))
         {
-            console.Out.WriteLine($"@{user}");
+            sb.AppendLine($"@{user}");
         }
+
+        console.Out.WriteLine($"::set-output name=contributors::{sb}");
 
         return 0;
     }
