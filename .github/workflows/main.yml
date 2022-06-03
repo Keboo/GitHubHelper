@@ -7,7 +7,7 @@ jobs:
     steps:
       - name: GetContribs
         id: get-contribs
-        uses: Keboo/GitHubHelper@9fb810c6d7e7147fc8259561766432d5ef1d89f2
+        uses: Keboo/GitHubHelper@b136f90246cda3bc85ebbc9c837a15bf93f6611f
         with:
           milestone: '4.6.0'
           repository: 'MaterialDesignInXamlToolkit'
