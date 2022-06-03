@@ -11,6 +11,9 @@ inputs:
   repository-owner:
     description: 'The owner of the repository that contains the milestone'
     required: true
+  token:
+    description: 'Use github.token'
+    required: true
 outputs:
   contributors:
     description: 'The list of contributors'
@@ -18,4 +21,4 @@ runs:
   using: 'docker'
   image: 'Dockerfile'
   args:
-    - --milestone ${{ inputs.milestone }} --repo-name ${{ inputs.repository }} --repo-owner ${{ inputs.repository-owner }} --access-token ${{ github.token }}
+    - --milestone ${{ inputs.milestone }} --repo-name ${{ inputs.repository }} --repo-owner ${{ inputs.repository-owner }} --access-token ${{ inputs.token }}
