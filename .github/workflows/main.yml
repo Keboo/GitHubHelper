@@ -12,5 +12,6 @@ jobs:
           milestone: '4.6.0'
           repository: 'MaterialDesignInXamlToolkit'
           repository-owner: 'MaterialDesignInXAML'
+          token: ${{ github.token }}
       - name: Get the output
         run: echo "The contibutors are ${{ steps.get-contribs.outputs.contributors }}"

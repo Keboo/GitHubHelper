@@ -11,9 +11,10 @@ inputs:
   repository-owner:
     description: 'The owner of the repository that contains the milestone'
     required: true
+#secrets:
   token:
-    description: 'Use github.token'
-    required: true
+    description: 'A token passed from the caller workflow'
+    required: false
 outputs:
   contributors:
     description: 'The list of contributors'
@@ -28,4 +29,6 @@ runs:
     - ${{ inputs.repository }} 
     - --repo-owner
     - ${{ inputs.repository-owner }}
+    - --access-token
+    - ${{ secrets.token }}
     
