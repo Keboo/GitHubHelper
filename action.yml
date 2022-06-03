@@ -21,4 +21,8 @@ runs:
   using: 'docker'
   image: 'Dockerfile'
   args:
-    - contributors --milestone ${{ inputs.milestone }} --repo-name ${{ inputs.repository }} --repo-owner ${{ inputs.repository-owner }} --access-token ${{ inputs.token }}
+    - contributors
+    - --milestone ${{ inputs.milestone }} 
+    - --repo-name ${{ inputs.repository }} 
+    - --repo-owner ${{ inputs.repository-owner }}
+    - --access-token ${{ inputs.token }}
