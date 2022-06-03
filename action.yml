@@ -30,5 +30,5 @@ runs:
     - --repo-owner
     - ${{ inputs.repository-owner }}
     - --access-token
-    - ${{ secrets.token }}
+    - ${{ inputs.token }}
     
