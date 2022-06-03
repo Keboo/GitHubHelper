@@ -187,6 +187,10 @@ class Program
             sb.AppendLine($"@{user}");
         }
 
+        sb.Replace("%", "%25");
+        sb.Replace("\n", "%0A");
+        sb.Replace("\r", "%0D");
+
         console.Out.WriteLine($"::set-output name=contributors::{sb}");
 
         return 0;
