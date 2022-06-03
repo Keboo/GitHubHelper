@@ -14,6 +14,5 @@ FROM build AS publish
 RUN dotnet publish "GitHubHelper.csproj" -c Release -o /app/publish
 
 FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "GitHubHelper.dll"]
+COPY --from=publish /app/publish /app
+ENTRYPOINT ["dotnet", "/app/GitHubHelper.dll"]
