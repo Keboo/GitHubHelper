@@ -174,13 +174,14 @@ class Program
             users.Add(pr.User);
         }
 
-        var ignoredUsers = new[] { "Keboo", "MDIX-SA", "github-actions[bot]" };
+        var ignoredUsers = new[] { "Keboo", "MDIX-SA" };
 
         StringBuilder sb = new();
         sb.AppendLine("A big thank you to everyone who contributed (either with issues or pull requests):");
 
         foreach (string user in users
             .Select(x => x.Login)
+            .Where(x => !x.Contains("[bot]"))
             .Except(ignoredUsers)
             .OrderBy(x => x))
         {
