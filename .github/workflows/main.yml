@@ -9,7 +9,7 @@ jobs:
         id: get-contribs
         uses: Keboo/GitHubHelper@master
         with:
-          milestone: '4.6.0'
+          milestone: '5.0.0'
           repository: 'MaterialDesignInXamlToolkit'
           repository-owner: 'MaterialDesignInXAML'
           token: ${{ github.token }}
