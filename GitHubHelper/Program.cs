@@ -188,10 +188,6 @@ class Program
             sb.AppendLine($"@{user}");
         }
 
-        sb.Replace("%", "%25");
-        sb.Replace("\n", "%0A");
-        sb.Replace("\r", "%0D");
-
         console.Out.WriteLine(sb.ToString());
 
         if (Environment.GetEnvironmentVariable("GITHUB_OUTPUT") is { } githubOutput)
