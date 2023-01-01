@@ -1,0 +1,29 @@
+name: Wiki Test
+
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  update_wiki:
+    runs-on: ubuntu-latest
+    name: Testing updating a wiki
+    steps:
+      - name: Checkout Wiki Repo
+        uses: actions/checkout@v3
+        with:
+          repository:  ${{ github.repository }}.wiki
+
+      - name: Update Wiki
+        run: |
+          echo "Hello World" | Out-File -FilePath Home.md -Encoding utf8 -Force
+
+      - name: Commit Wiki
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -m "Update Wiki" -a
+          git push
