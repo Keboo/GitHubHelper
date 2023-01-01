@@ -196,7 +196,10 @@ class Program
 
         if (Environment.GetEnvironmentVariable("GITHUB_OUTPUT") is { } githubOutput)
         {
-            File.AppendAllText(githubOutput, $"contributors={sb}");
+            //Use environment file
+            //https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#environment-files
+            const string delimiter = "------";
+            File.AppendAllText(githubOutput, $"contributors<<{delimiter}{Environment.NewLine}{sb}{Environment.NewLine}{delimiter}");
         }
         else
         {
