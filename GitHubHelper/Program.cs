@@ -192,7 +192,16 @@ class Program
         sb.Replace("\n", "%0A");
         sb.Replace("\r", "%0D");
 
-        console.Out.WriteLine($"::set-output name=contributors::{sb}");
+        console.Out.WriteLine(sb.ToString());
+
+        if (Environment.GetEnvironmentVariable("GITHUB_OUTPUT") is { } githubOutput)
+        {
+            File.AppendAllText(githubOutput, $"contributors={sb}");
+        }
+        else
+        {
+            console.Out.WriteLine("GITHUB_OUTPUT environment variable not set");
+        }
 
         return 0;
     }
