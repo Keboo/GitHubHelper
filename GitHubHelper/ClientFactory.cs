@@ -16,15 +16,9 @@ public class ClientFactory : IClientFactory
 
     public IGitHubClient GetClient(string accessToken, string appName = "GitHubHelper")
     {
-        if (accessToken is null)
-        {
-            throw new ArgumentNullException(nameof(accessToken));
-        }
+        ArgumentNullException.ThrowIfNull(accessToken);
+        ArgumentNullException.ThrowIfNull(appName);
 
-        if (appName is null)
-        {
-            throw new ArgumentNullException(nameof(appName));
-        }
         IHttpClient httpClient = new HttpClientAdapter(MessageHandler);
         IJsonSerializer jsonSerializer = new SimpleJsonSerializer();
         ICredentialStore credentialStore = new InMemoryCredentialStore(new Credentials(accessToken));

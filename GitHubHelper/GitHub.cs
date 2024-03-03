@@ -12,7 +12,7 @@ public static class GitHub
         {
             throw new ArgumentException("Access token is required");
         }
-        IClientFactory factory = new ClientFactory();
+        ClientFactory factory = new();
         return factory.GetClient(accessToken);
     }
 }

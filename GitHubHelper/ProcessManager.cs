@@ -47,10 +47,7 @@ public class ProcessManager : IProcessManager
         Action<string>? progressError,
         CancellationToken token)
     {
-        if (startInfo is null)
-        {
-            throw new ArgumentNullException(nameof(startInfo));
-        }
+        ArgumentNullException.ThrowIfNull(startInfo);
 
         return Task.Factory.StartNew(() =>
         {
@@ -245,7 +242,7 @@ public class ProcessManager : IProcessManager
         {
             if (Environment.OSVersion.Version >= Windows8Version)
             {
-                //Window 8 and newer support desting of jobs. So we can always attach.
+                //Window 8 and newer support nesting of jobs. So we can always attach.
                 return true;
             }
 
