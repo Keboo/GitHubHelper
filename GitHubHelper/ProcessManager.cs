@@ -1,6 +1,4 @@
 ﻿using System;
-using System.CommandLine;
-using System.CommandLine.IO;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -35,8 +33,8 @@ public interface IProcessManager
 
 public class ProcessManager : IProcessManager
 {
-    private readonly IConsole _Logger;
-    public ProcessManager(IConsole logger)
+    private readonly TextWriter _Logger;
+    public ProcessManager(TextWriter logger)
     {
         _Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -75,7 +73,7 @@ public class ProcessManager : IProcessManager
         Action<string>? progressError,
         CancellationToken token)
     {
-        _Logger.Out.WriteLine($"Running process: '{process.StartInfo.FileName} {process.StartInfo.Arguments}'");
+        _Logger.WriteLine($"Running process: '{process.StartInfo.FileName} {process.StartInfo.Arguments}'");
         process.EnableRaisingEvents = true;
         process.OutputDataReceived += OutputHandler;
         process.ErrorDataReceived += ErrorHandler;
@@ -97,7 +95,7 @@ public class ProcessManager : IProcessManager
                     }
                     catch (Win32Exception ex)
                     {
-                        _Logger.Error.WriteLine($"Error cancelling process{Environment.NewLine}{ex}");
+                        _Logger.WriteLine($"Error cancelling process{Environment.NewLine}{ex}");
                     }
                 }
             }, process);
@@ -117,12 +115,12 @@ public class ProcessManager : IProcessManager
             {
                 if (!JobManager.AttachProcessToJob(process))
                 {
-                    _Logger.Out.WriteLine("Failed to attach process to job");
+                    _Logger.WriteLine("Failed to attach process to job");
                 }
             }
             catch (ProcessJobException e)
             {
-                _Logger.Error.WriteLine($"Error attaching process to job{Environment.NewLine}{e}");
+                _Logger.WriteLine($"Error attaching process to job{Environment.NewLine}{e}");
             }
 
             if (process.HasExited)
@@ -133,7 +131,7 @@ public class ProcessManager : IProcessManager
         }
         catch (Exception e)
         {
-            _Logger.Error.WriteLine($"Error running '{process.StartInfo.FileName} {process.StartInfo.Arguments}'{Environment.NewLine}{e}");
+            _Logger.WriteLine($"Error running '{process.StartInfo.FileName} {process.StartInfo.Arguments}'{Environment.NewLine}{e}");
         }
         finally
         {
@@ -157,7 +155,7 @@ public class ProcessManager : IProcessManager
             }
             catch (Exception ex)
             {
-                _Logger.Error.WriteLine($"Unable to kill process '{process.StartInfo.FileName} {process.StartInfo.Arguments}'{Environment.NewLine}{ex}");
+                _Logger.WriteLine($"Unable to kill process '{process.StartInfo.FileName} {process.StartInfo.Arguments}'{Environment.NewLine}{ex}");
             }
         }
         return process;

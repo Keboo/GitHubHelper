@@ -3,9 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.IO;
-using System.CommandLine.Parsing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -20,9 +17,18 @@ class Program
     public static async Task<int> Main(string[] args)
     {
         Option<string> milestone = new("--milestone");
-        Option<string?> accessToken = new("--access-token", getDefaultValue: () => Environment.GetEnvironmentVariable("GitHubAccessToken"));
-        Option<string?> repoOwner = new("--repo-owner", getDefaultValue: () => "MaterialDesignInXAML");
-        Option<string?> repoName = new("--repo-name", getDefaultValue: () => "MaterialDesignInXamlToolkit");
+        Option<string?> accessToken = new("--access-token")
+        {
+            DefaultValueFactory = _ => Environment.GetEnvironmentVariable("GitHubAccessToken")
+        };
+        Option<string?> repoOwner = new("--repo-owner")
+        {
+            DefaultValueFactory = _ => "MaterialDesignInXAML"
+        };
+        Option<string?> repoName = new("--repo-name")
+        {
+            DefaultValueFactory = _ => "MaterialDesignInXamlToolkit"
+        };
 
         Command contributors = new("contributors")
         {
@@ -31,9 +37,16 @@ class Program
             repoOwner,
             repoName
         };
-        contributors.SetHandler<IConsole, string, string?, string?, string?>(
-            MilestoneContributors, milestone, accessToken, repoOwner, repoName);
-
+        contributors.SetAction(ParseResult =>
+        {
+            return MilestoneContributors(
+                ParseResult.InvocationConfiguration.Output,
+                ParseResult.GetValue(milestone)!,
+                ParseResult.GetValue(accessToken),
+                ParseResult.GetValue(repoOwner),
+                ParseResult.GetValue(repoName));
+        });
+        
         Option<DateTimeOffset> since = new("--since");
         Command projects = new("projects")
         {
@@ -42,8 +55,15 @@ class Program
             repoOwner,
             repoName
         };
-        projects.SetHandler<IConsole, DateTimeOffset, string?, string?, string?>(
-            CreatedProjects, since, accessToken, repoOwner, repoName);
+        projects.SetAction(parseResult =>
+        {
+            return CreatedProjects(
+                parseResult.InvocationConfiguration.Output,
+                parseResult.GetValue(since),
+                parseResult.GetValue(accessToken),
+                parseResult.GetValue(repoOwner),
+                parseResult.GetValue(repoName));
+        });
         Command createdFiles = new("created")
         {
             projects
@@ -56,32 +76,36 @@ class Program
             previousVersion,
             currentVersion
         };
-        icons.SetHandler<IConsole, string, string>(
-            DiffIcons, previousVersion, currentVersion);
+        icons.SetAction(parseResult =>
+        {
+            string pVersion = parseResult.GetValue(previousVersion)!;
+            string cVersion = parseResult.GetValue(currentVersion)!;
+            return DiffIcons(parseResult.InvocationConfiguration.Output, pVersion, cVersion);
+        });
 
         Command diff = new("diff")
         {
             icons
         };
 
-        return await new CommandLineBuilder(new RootCommand()
+        var command = new RootCommand()
         {
             contributors,
             createdFiles,
             diff
-        }).UseDefaults()
-          .Build()
-          .InvokeAsync(args);
+        };
+        
+        return await command.Parse(args).InvokeAsync();
     }
 
     public static async Task<int> CreatedProjects(
-        IConsole console,
+        TextWriter textWriter,
         DateTimeOffset since,
         string? accessToken = null,
         string? repoOwner = null,
         string? repoName = null)
     {
-        if (!TryGetRepoInfo(console, ref repoOwner, ref repoName))
+        if (!TryGetRepoInfo(textWriter, ref repoOwner, ref repoName))
         {
             return 1;
         }
@@ -114,7 +138,7 @@ class Program
                         && string.Equals(file.Status, "added", StringComparison.OrdinalIgnoreCase)
                         && seenProjectFiles.Add(file.Filename))
                     {
-                        console.Out.WriteLine($"{commit.Commit.Author.Date:d} => {file.Filename}");
+                        textWriter.WriteLine($"{commit.Commit.Author.Date:d} => {file.Filename}");
                     }
                 }
             }
@@ -124,14 +148,14 @@ class Program
     }
 
     public static async Task<int> MilestoneContributors(
-        IConsole console,
+        TextWriter textWriter,
         string milestone,
         string? accessToken = null,
         string? repoOwner = null,
         string? repoName = null)
     {
-        console.Out.WriteLine($"Getting contributors from {repoOwner}/{repoName} for milestone {milestone}");
-        if (!TryGetRepoInfo(console, ref repoOwner, ref repoName))
+        textWriter.WriteLine($"Getting contributors from {repoOwner}/{repoName} for milestone {milestone}");
+        if (!TryGetRepoInfo(textWriter, ref repoOwner, ref repoName))
         {
             return 1;
         }
@@ -144,7 +168,7 @@ class Program
 
         if (githubMilestone is null)
         {
-            console.Error.WriteLine($"Could not find milestone '{milestone}'");
+            textWriter.WriteLine($"Could not find milestone '{milestone}'");
             return 2;
         }
 
@@ -174,7 +198,7 @@ class Program
             users.Add(pr.User);
         }
 
-        var ignoredUsers = new[] { "Keboo", "MDIX-SA" };
+        var ignoredUsers = new[] { "Keboo", "MDIX-SA", "Copilot" };
 
         StringBuilder sb = new();
         sb.AppendLine("A big thank you to everyone who contributed (either with issues or pull requests):");
@@ -188,7 +212,7 @@ class Program
             sb.AppendLine($"@{user}");
         }
 
-        console.Out.WriteLine(sb.ToString());
+        textWriter.WriteLine(sb.ToString());
 
         if (Environment.GetEnvironmentVariable("GITHUB_OUTPUT") is { } githubOutput)
         {
@@ -199,46 +223,46 @@ class Program
         }
         else
         {
-            console.Out.WriteLine("GITHUB_OUTPUT environment variable not set");
+            textWriter.WriteLine("GITHUB_OUTPUT environment variable not set");
         }
 
         return 0;
     }
 
     public static async Task<int> DiffIcons(
-        IConsole console,
+        TextWriter textWriter,
         string previousVersion,
         string currentVersion)
     {
         if (string.IsNullOrWhiteSpace(previousVersion))
         {
-            console.Out.WriteLine("Previous version is required");
+            textWriter.WriteLine("Previous version is required");
             return 1;
         }
         if (string.IsNullOrWhiteSpace(currentVersion))
         {
-            console.Out.WriteLine("Current version is required");
+            textWriter.WriteLine("Current version is required");
             return 1;
         }
 
-        IProcessManager processManager = new ProcessManager(console);
+        IProcessManager processManager = new ProcessManager(textWriter);
 
         string command = $"install MaterialDesignThemes -DirectDownload -Prerelease -Version ";
 
         FileInfo nuget = new("NuGet.exe");
         if (nuget.Directory is null)
         {
-            console.Out.WriteLine($"Failed to find NuGet.exe");
+            textWriter.WriteLine($"Failed to find NuGet.exe");
             return 1;
         }
         if (!await processManager.RunNugetCommand(nuget, command + previousVersion, nuget.Directory))
         {
-            console.Out.WriteLine($"Failed to download MaterialDesignThemes {previousVersion}");
+            textWriter.WriteLine($"Failed to download MaterialDesignThemes {previousVersion}");
             return 1;
         }
         if (!await processManager.RunNugetCommand(nuget, command + currentVersion, nuget.Directory))
         {
-            console.Out.WriteLine($"Failed to download MaterialDesignThemes {currentVersion}");
+            textWriter.WriteLine($"Failed to download MaterialDesignThemes {currentVersion}");
             return 1;
         }
 
@@ -277,23 +301,23 @@ class Program
             .OrderBy(x => x)
             .ToList();
 
-        console.Out.WriteLine("## Pack Icon Changes");
-        console.Out.WriteLine($"### New icons ({newItems.Count})");
+        textWriter.WriteLine("## Pack Icon Changes");
+        textWriter.WriteLine($"### New icons ({newItems.Count})");
         foreach (var iconGroup in newItems.GroupBy(name => newValuesByName[name]))
         {
-            console.Out.WriteLine($"- {string.Join(", ", iconGroup)}");
+            textWriter.WriteLine($"- {string.Join(", ", iconGroup)}");
         }
 
-        console.Out.WriteLine($"### Icons with visual changes ({visuallyChanged.Count})");
+        textWriter.WriteLine($"### Icons with visual changes ({visuallyChanged.Count})");
         foreach (var iconGroup in visuallyChanged.GroupBy(name => newValuesByName[name]))
         {
-            console.Out.WriteLine($"- {string.Join(", ", iconGroup)}");
+            textWriter.WriteLine($"- {string.Join(", ", iconGroup)}");
         }
 
-        console.Out.WriteLine($"### Removed icons ({removedItems.Count})");
+        textWriter.WriteLine($"### Removed icons ({removedItems.Count})");
         foreach (var iconGroup in removedItems.GroupBy(name => previousValuesByName[name]))
         {
-            console.Out.WriteLine($"- {string.Join(", ", iconGroup)}");
+            textWriter.WriteLine($"- {string.Join(", ", iconGroup)}");
         }
 
         return 0;
@@ -343,18 +367,18 @@ class Program
         return rv;
     }
 
-    private static bool TryGetRepoInfo(IConsole console, ref string? repoOwner, ref string? repoName)
+    private static bool TryGetRepoInfo(TextWriter textWriter, ref string? repoOwner, ref string? repoName)
     {
         repoOwner ??= Environment.GetEnvironmentVariable("GitHubOwner");
         if (string.IsNullOrWhiteSpace(repoOwner))
         {
-            console.Error.WriteLine("Repository owner is required");
+            textWriter.WriteLine("Repository owner is required");
             return false;
         }
         repoName ??= Environment.GetEnvironmentVariable("GitHubRepo");
         if (string.IsNullOrWhiteSpace(repoName))
         {
-            console.Error.WriteLine("Repository name is required");
+            textWriter.WriteLine("Repository name is required");
             return false;
         }
         return true;
